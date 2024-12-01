@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Form with Remove Action</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      body {
+        font-family: "Roboto Mono", monospace;
+        margin: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      button {
+        background-color: #4caf50; /* Green */
+        border: none;
+        color: white;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 12px;
+        transition: background-color 0.3s ease;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+
+      .submit-button {
+        background-color: #3498db; /* Blue */
+      }
+      .submit-button:hover {
+        background-color: #2980b9;
+      }
+
+      .form-group {
+        border: 1px solid #ccc;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        position: relative;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+        box-sizing: border-box;
+      }
+      .remove-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background-color: #e74c3c;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        cursor: pointer;
+        border-radius: 3px;
+      }
+      #form-container {
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .actions-container {
+        display: flex;
+        flex: 1;
+        flex-direction: row;
+        gap: 10px;
+      }
+      .title {
+        text-align: center;
+        font-size: 2rem;
+        margin-bottom: 20px;
+      }
+      .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.8);
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+
+      .loading-overlay img {
+        width: 300px;
+        height: 300px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="loading-overlay" id="loading-overlay">
+      <img src="loading.gif" alt="Loading..." />
+    </div>
+    <h1 class="title">TheCatIsPlanning</h1>
+
+    <div id="plot1" style="width: 80%; height: 500px; margin: auto"></div>
+
+    <!-- Form Section -->
+    <div id="form-container">
+      <button id="add-action-btn">Add Action</button>
+      <form id="actions-form" class="actions-container">
+        <!-- Dynamic fields will be appended here -->
+      </form>
+      <button id="submit-form-btn" class="submit-button">Submit Actions</button>
+    </div>
+
+    <div id="plot2" style="width: 80%; height: 500px; margin: auto"></div>
+
+    <script>
+      let actionCount = 0;
+
+      // Function to create a new field group
+      function createFieldGroup() {
+        actionCount++;
+        const formGroup = document.createElement("div");
+        formGroup.classList.add("form-group");
+        formGroup.id = `action-${actionCount}`;
+
+        formGroup.innerHTML = `
+                <label for="var-${actionCount}">Variable:</label>
+                <input type="text" id="var-${actionCount}" name="var" required>
+
+                <label for="amount-${actionCount}">Amount:</label>
+                <input type="number" id="amount-${actionCount}" name="amount" required>
+
+                <label for="time-${actionCount}">Time:</label>
+                <input type="date" id="time-${actionCount}" name="time" required>
+
+                <label for="duration-${actionCount}">Duration:</label>
+                <input type="number" id="duration-${actionCount}" name="duration" required>
+
+                <label for="type-${actionCount}">Type:</label>
+                <select id="type-${actionCount}" name="type" required>
+                    <option value="">Select...</option>
+                    <option value="set">Set</option>
+                    <option value="update">Update</option>
+                </select>
+
+                <button type="button" class="remove-btn" onclick="removeFieldGroup(${actionCount})">Remove</button>
+            `;
+
+        document.getElementById("actions-form").appendChild(formGroup);
+      }
+
+      // Function to remove a field group
+      function removeFieldGroup(id) {
+        const fieldGroup = document.getElementById(`action-${id}`);
+        if (fieldGroup) {
+          fieldGroup.remove();
+        }
+      }
+
+      // Event listener for adding new action groups
+      document
+        .getElementById("add-action-btn")
+        .addEventListener("click", (e) => {
+          e.preventDefault();
+          createFieldGroup();
+        });
+
+      // Event listener for form submission
+      document
+        .getElementById("submit-form-btn")
+        .addEventListener("click", (e) => {
+          e.preventDefault();
+          const actions = [];
+
+          document.getElementById("loading-overlay").style.display = "flex";
+
+          // Gather data from the form
+          for (let i = 1; i <= actionCount; i++) {
+            try {
+              const actionElement = document.getElementById(`action-${i}`);
+              if (actionElement) {
+                const varField = document.getElementById(`var-${i}`).value;
+                const amountField = parseFloat(
+                  document.getElementById(`amount-${i}`).value
+                );
+                const timeField = new Date(
+                  document.getElementById(`time-${i}`).value
+                ).toISOString();
+                const durationField = parseFloat(
+                  document.getElementById(`duration-${i}`).value
+                );
+                const typeField = document.getElementById(`type-${i}`).value;
+
+                if (!["set", "update"].includes(typeField)) {
+                  alert(`Invalid type for Action ${i}`);
+                  return;
+                }
+
+                actions.push({
+                  var: varField,
+                  amount: amountField,
+                  time: timeField,
+                  duration: durationField,
+                  actionType: typeField,
+                });
+              }
+            } catch (error) {
+              alert(
+                `Error processing actions, make sure all fields are filled correctly.`
+              );
+            }
+          }
+
+          console.log("Actions Submitted:", actions);
+
+          // (Optional) Call a function to process these actions
+          callBackend(actions); // For demonstration, show a plot
+        });
+
+      async function callBackend(actions) {
+        // Fetch the JSON data
+        const response = await fetch("http://localhost:5000/forecast", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ actions }),
+        });
+        var data = await response.json();
+
+        // Add fake response wait time
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        data = {
+          x: [1, 2, 3, 4, 5],
+          y: [1, 4, 9, 5, 4],
+          std: [0.5, 0.3, 0.8, 0.2, 0.4],
+        };
+
+        document.getElementById("loading-overlay").style.display = "none";
+
+        console.log("Success:", data);
+        // Call a function to process the response
+        createPlot(data, "plot2"); // For demonstration, show a plot
+      }
+
+      function createPlot(data, plotId) {
+        console.log(data);
+        console.log(data.record);
+        console.log(plotId);
+        // Extract the x, y, and std values
+        const { x, y, std } = data;
+
+        // Calculate the confidence intervals
+        const upperBound = y.map((value, index) => value + std[index]);
+        const lowerBound = y.map((value, index) => value - std[index]);
+
+        // Create traces for the plot
+        const traceMain = {
+          x: x,
+          y: y,
+          mode: "lines+markers",
+          name: "Main Line",
+          line: { color: "blue" },
+        };
+
+        const traceUpper = {
+          x: x,
+          y: upperBound,
+          mode: "lines",
+          line: { color: "lightblue", dash: "dot" },
+          name: "Upper Bound",
+        };
+
+        const traceLower = {
+          x: x,
+          y: lowerBound,
+          mode: "lines",
+          line: { color: "lightblue", dash: "dot" },
+          name: "Lower Bound",
+        };
+
+        // Confidence interval fill
+        const traceFill = {
+          x: [...x, ...x.slice().reverse()],
+          y: [...upperBound, ...lowerBound.slice().reverse()],
+          fill: "toself",
+          fillcolor: "rgba(173,216,230,0.3)",
+          line: { width: 0 },
+          name: "Confidence Interval",
+        };
+
+        // Combine all traces
+        const traces = [traceFill, traceMain, traceUpper, traceLower];
+
+        // Layout for the plot
+        const layout = {
+          title: "Plot with Confidence Intervals",
+          xaxis: { title: "X-axis" },
+          yaxis: { title: "Y-axis" },
+          showlegend: true,
+        };
+
+        // Render the plot
+        Plotly.newPlot(plotId, traces, layout);
+      }
+
+      // Initialize with one action field group
+      createFieldGroup();
+
+      async function fetchDataAndPlot(url) {
+        // Fetch the JSON data
+        const response = await fetch(url);
+        var data = await response.json();
+
+        createPlot(data.record, "plot1"); // For demonstration, show a plot
+      }
+
+      fetchDataAndPlot("https://api.jsonbin.io/v3/qs/674c0e34ad19ca34f8d37b0e");
+    </script>
+  </body>
+</html>
