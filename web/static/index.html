@@ -105,15 +105,38 @@
         width: 300px;
         height: 300px;
       }
+
+      .shap-button {
+        background-color: #f39c12; /* Orange */
+      }
+
+      .plot2 {
+        width: 80%;
+        height: 500px;
+        margin: auto;
+        display: none;
+      }
+
+      .plot1 {
+        width: 80%;
+        height: 500px;
+        margin: auto;
+        display: none;
+      }
     </style>
   </head>
   <body>
     <div class="loading-overlay" id="loading-overlay">
       <img src="loading.gif" alt="Loading..." />
     </div>
-    <h1 class="title">TheCatIsPlanning</h1>
+    <h1 class="title">TheCatIsForecatting</h1>
 
-    <div id="plot1" style="width: 80%; height: 500px; margin: auto"></div>
+    <!-- Add a input field with the number of steps to simulate -->
+    <label for="steps">Number of Months:</label>
+    <input type="number" id="steps" name="steps" value="12" required />
+    <button id="redo-btn">Compute Forecasting</button>
+
+    <div id="plot1" class="plot1"></div>
 
     <!-- Form Section -->
     <div id="form-container">
@@ -124,7 +147,9 @@
       <button id="submit-form-btn" class="submit-button">Submit Actions</button>
     </div>
 
-    <div id="plot2" style="width: 80%; height: 500px; margin: auto"></div>
+    <div id="plot2" class="plot2"></div>
+
+    <button id="shap-btn" class="shap-button">Fetch SHAP Values</button>
 
     <div id="shap-plot" style="width: 80%; height: 500px; margin: auto"></div>
 
@@ -234,19 +259,25 @@
 
       async function callBackend(actions) {
         // Fetch the JSON data
-        const response = await fetch("http://127.0.0.1:8000/forecast/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(actions),
-        });
+        var numSteps = document.getElementById("steps").value;
+        const response = await fetch(
+          "http://127.0.0.1:8000/forecast/" + numSteps,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(actions),
+          }
+        );
         var data = await response.json();
 
         // Add fake response wait time
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        // await new Promise((resolve) => setTimeout(resolve, 2000));
 
         document.getElementById("loading-overlay").style.display = "none";
+
+        document.getElementById("plot2").style.display = "block";
 
         console.log("Success:", data);
         // Call a function to process the response
@@ -254,6 +285,8 @@
       }
 
       function createPlot(data, plotId) {
+        document.getElementById(plotId).style.display = "block";
+
         console.log(data);
         console.log(data.record);
         console.log(plotId);
@@ -341,7 +374,10 @@
         createPlot(data, "plot1"); // For demonstration, show a plot
       }
 
-      fetchDataAndPlot("http://127.0.0.1:8000/forecast/");
+      document.getElementById("redo-btn").addEventListener("click", () => {
+        var numSteps = document.getElementById("steps").value;
+        fetchDataAndPlot("http://127.0.0.1:8000/forecast/" + numSteps);
+      });
 
       async function fetchShapDataAndPlot(url) {
         // Fetch the JSON data
@@ -360,8 +396,8 @@
         // createPlot(data, "shap-plot"); // For demonstration, show a plot
         // Create a bar plot for SHAP values
         const trace = {
-          x: data.x,
-          y: data.y,
+          x: data.y,
+          y: data.X,
           type: "bar",
           orientation: "h",
         };
@@ -369,13 +405,24 @@
         const layout = {
           title: "SHAP Values",
           xaxis: { title: "SHAP Value" },
-          yaxis: { title: "Feature" },
+          yaxis: {
+            title: "Feature",
+            automargin: true, // Automatically adjust margins
+            tickfont: {
+              size: 10, // Adjust the font size if needed
+            },
+          },
+          margin: {
+            l: 200, // Increase left margin to accommodate long labels
+          },
         };
 
         Plotly.newPlot("shap-plot", [trace], layout);
       }
 
-      fetchShapDataAndPlot("http://127.0.0.1:8000/shap/");
+      document.getElementById("shap-btn").addEventListener("click", () => {
+        fetchShapDataAndPlot("http://127.0.0.1:8000/shap/");
+      });
     </script>
   </body>
 </html>

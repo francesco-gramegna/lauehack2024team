@@ -2,3 +2,5 @@ src/data
 **/__pycache__
 
 *.xlsx
+
+src/key
