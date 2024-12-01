@@ -8,6 +8,7 @@ from typing import List
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel, ExpSineSquared, DotProduct, Matern
 from statsmodels.tsa.vector_ar.var_model import VAR
+import shap
 
 
 def fill_missing_values_with_gp(df):
@@ -155,3 +156,37 @@ class Forecaster:
             self.y = pd.concat([ self.y, pd.Series(preds) ])
 
         return preds, stds
+    
+
+    def explain_with_shap(self, samples, plot_type="bar"):
+    
+        if self.gp is None or not hasattr(self.gp, "kernel_"):
+            raise ValueError("Il modello GP non è stato addestrato. Chiama 'fit' prima di utilizzare SHAP.")
+
+        # Seleziona un sottoinsieme di dati da spiegare
+        X_sample = (self.X).sample(n=samples, random_state=42)
+
+        # Crea un Explainer SHAP per GaussianProcessRegressor
+        explainer = shap.KernelExplainer(self.gp.predict, X_sample.values)
+
+        # Calcola i valori SHAP
+        shap_values = explainer.shap_values(X_sample.values)
+
+        if 'Date' in X_sample.columns:
+            date_idx = X_sample.columns.get_loc('Date')
+            X_sample = X_sample.drop(columns=["Date"])
+            shap_values = np.delete(shap_values, date_idx, axis=1)
+
+        shap_dict = {'X' : [feature for feature in X_sample.columns], 'y' : [float(np.mean(np.abs(shap_values[:, idx]))) for idx in range(len(X_sample.columns))]}
+        
+        # Visualizza i risultati
+        #if plot_type == "bar":
+        #    shap.summary_plot(shap_values, X_sample, plot_type="bar")
+        #elif plot_type == "summary":
+        #    shap.summary_plot(shap_values, X_sample)
+        #elif plot_type == "force":
+        #    shap.force_plot(explainer.expected_value, shap_values, self.X.iloc[:samples])
+        #else:
+        #    raise ValueError(f"Tipo di plot SHAP '{plot_type}' non supportato.")
+
+        return shap_dict
