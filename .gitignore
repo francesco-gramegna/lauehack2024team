@@ -1,2 +1,4 @@
 src/data
 **/__pycache__
+
+*.xlsx
