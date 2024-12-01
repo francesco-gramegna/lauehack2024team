@@ -80,7 +80,9 @@ async def shap_req():
     values = result["y"]
 
     # Sort the features by the shapley values
-    features = [x for _, x in sorted(zip(values, features), reverse=True)]
+    features = [
+        x for _, x in sorted(zip(values, features), key=lambda x: x[0], reverse=True)
+    ]
     values = sorted(values, reverse=True)
     result["X"] = features[:5]
     result["y"] = values[:5]
