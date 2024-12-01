@@ -1,4 +1,4 @@
-# TheCatIsForecasting
+# TheCatIsForecatting
 
 
 Submission for the LauzHack 2024 hackathon.
