@@ -61,12 +61,17 @@ class ExternalAction:
 
 class Forecaster:
     def __init__(self):
-        kernel = WhiteKernel(0.1, (1e-3, 1e3))
-        kernel += ConstantKernel(1, (1e-4, 1e2)) * RBF(1, (1e-3, 1e2))
-        kernel += ConstantKernel(1, (1e-4, 1e2)) * ExpSineSquared(1, 1, (1e-2, 1e2), (1e-2, 1e2))
-        kernel += ConstantKernel(1, (1e-4, 1e2)) * DotProduct(1, (1e-2, 1e2))
+        # kernel = WhiteKernel(0.1, (1e-3, 1e3))
+        # kernel += ConstantKernel(1, (1e-4, 1e2)) * RBF(1, (1e-3, 1e2))
+        # kernel += ConstantKernel(1, (1e-4, 1e2)) * ExpSineSquared(1, 1, (1e-2, 1e2), (1e-2, 1e2))
+        # kernel += ConstantKernel(1, (1e-4, 1e2)) * DotProduct(1, (1e-2, 1e2))
 
-        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=2, random_state=42)
+        PARAM_RANGES = (1e-9, 1e9)
+        kernel = WhiteKernel(0.1, PARAM_RANGES)
+        kernel += ConstantKernel(1, PARAM_RANGES) * RBF(1, PARAM_RANGES)
+        kernel += ConstantKernel(1, PARAM_RANGES) * DotProduct(1, PARAM_RANGES)
+
+        self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, random_state=42)
         self.y_mean = None
         self.y_std = None
 
@@ -81,35 +86,36 @@ class Forecaster:
 
         self.X_mean = X.mean()
         self.X_std = X.std()
+        orig_date = X["Date"].copy()
         self.X = (X-self.X_mean)/(self.X_std + 1e-9)
-
+        self.X["Date"] = orig_date
 
         self.y_mean = y.mean()
         self.y_std = y.std()
         self.y = (y - self.y_mean) / (self.y_std)
 
 
-    def forecast(self, steps: int, external_actions: List[ExternalAction] = [], verbose=False):
+    def forecast(self, steps: int, external_actions: List[ExternalAction]=[], maxlags=15, verbose=False):
         stds = []
         preds = []
         start_time = int(self.X.iloc[-1]["Date"]) + 1
 
-        with warnings.catch_warnings(action="default"):
+        with warnings.catch_warnings(action="ignore"):
             for _ in tqdm(range(steps), disable=not verbose):
-                self.gp.fit(self.X, self.y)
+                model = VAR(self.X)
+                results = model.fit(maxlags=maxlags)
 
-                new_sample = {
-                    col: np.random.normal(self.X[col].mean(), self.X[col].std(), (1,))[0]
-                    for col in self.X.columns
-                }
+                if not results.is_stable:
+                    raise ValueError("Model is unstable. Check data or adjust lags.")
+
+                forecast_input = self.X.values[-results.k_ar:]
+                forecast = results.forecast(y=forecast_input, steps=1)
+                new_sample = {col: val for col, val in zip(self.X.columns, forecast[0])}
                 new_sample["Date"] = start_time
-
-                sampled_in = pd.DataFrame.from_dict([new_sample])
 
                 # Apply feasible actions
                 for e in external_actions:
                     if e.is_applicable(start_time):
-
                         # Apply action
                         if e.type == "set":
                             new_sample[e.var] = e.var
@@ -120,18 +126,18 @@ class Forecaster:
                             # Ri-normalize
                             new_sample[e.var] = (new_sample[e.var] - self.X_mean[e.var]) / self.X_std[e.var]
 
-
-
-
-                pred, std = self.gp.predict(sampled_in, return_std=True)
-                pred = pred[0]
-
-                stds.append(std)
-                preds.append(pred * self.y_std) + self.y_mean
-
                 self.X = pd.concat([ self.X, pd.DataFrame.from_dict([new_sample]) ])
-                self.y = pd.concat([ self.y, pd.Series([pred]) ])
 
                 start_time += 1
+
+            orig_date = self.X["Date"].copy()
+            self.X = self.X * self.X_std + self.X_mean
+            self.X["Date"] = orig_date
+
+            self.y = self.y * self.y_std + self.y_mean
+
+            self.gp.fit(self.X.iloc[:len(self.y)], self.y)
+            preds, stds = self.gp.predict(self.X.iloc[len(self.y):], return_std=True)
+            self.y = pd.concat([ self.y, pd.Series(preds) ])
 
         return preds, stds
