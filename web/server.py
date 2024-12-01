@@ -17,6 +17,8 @@ first_date = datetime.datetime(2018, 1, 1)
 forecaster_orig = Forecaster()
 forecaster_orig.fit(df)
 
+curr_forecaster = None
+
 
 
 app = FastAPI()
@@ -36,11 +38,12 @@ def iso_to_timestep(iso_time, first_date):
 
 
 @app.post("/forecast/")
-async def create_item(requests: list[Request]):
-    forecaster = deepcopy(forecaster_orig)
+async def forecast_req(requests: list[Request]):
+    global curr_forecaster
+    curr_forecaster = deepcopy(forecaster_orig)
 
-    preds, stds = forecaster.forecast(
-        10,
+    preds, stds = curr_forecaster.forecast(
+        30,
         external_actions = [
             ExternalAction(
                 req.var, 
@@ -60,6 +63,12 @@ async def create_item(requests: list[Request]):
         "std": (stds*1.96).tolist(), 
         "first_date": first_date + relativedelta(months=df.iloc[-1]["Date"]+1)
     }
+
+
+@app.post("/shap/")
+async def shap_req():
+    return curr_forecaster.explain_with_shap(30)
+
 
 
 
