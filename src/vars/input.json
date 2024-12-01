@@ -17,5 +17,23 @@
   },
   "YREX_ex_factory_volumes":{
     "description": "Sell-out data from BMS to customers (wholesalers, hospitals) of YREX product"
+  },
+  "INNOVIX_meetings_Indications": {
+    "description": "Internal BMS data tracking the number of interactions BMS medical representatives have with physicians for INNOVIX product"
+  },
+  "BRISTOR_meetings_Indications": {
+    "description": "Internal BMS data tracking the number of interactions BMS medical representatives have with physicians for BRISTOR product"
+  },
+  "YREX_meetings_Indications": {
+    "description": "Internal BMS data tracking the number of interactions BMS medical representatives have with physicians over YREX product"
+  },
+  "INNOVIX_face-to-face-call_Indications": {
+    "description": "Internal BMS data tracking the number of interactions BMS medical representatives have with physicians for INNOVIX product"
+  },
+  "BRISTOR_face-to-face-call_Indications": {
+    "description": "Internal BMS data tracking the number of interactions BMS medical representatives have with physicians for BRISTOR product"
+  },
+  "YREX_face-to-face-call_Indications": {
+    "description": "Internal BMS data tracking the number of interactions BMS medical representatives have with physicians over YREX product"
   }
 }
