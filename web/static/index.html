@@ -237,18 +237,18 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ actions }),
+          body: JSON.stringify( actions ),
         });
         var data = await response.json();
 
         // Add fake response wait time
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        data = {
-          x: [1, 2, 3, 4, 5],
-          y: [1, 4, 9, 5, 4],
-          std: [0.5, 0.3, 0.8, 0.2, 0.4],
-        };
+        // data = {
+        //   x: [1, 2, 3, 4, 5],
+        //   y: [1, 4, 9, 5, 4],
+        //   std: [0.5, 0.3, 0.8, 0.2, 0.4],
+        // };
 
         document.getElementById("loading-overlay").style.display = "none";
 

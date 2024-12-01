@@ -14,33 +14,35 @@ def fill_missing_values_with_gp(df):
     """
     Fill missing values in the dataframe using Gaussian Processes.
     """
-    for col in tqdm(df.columns):
-        if df[col].isna().sum() > 0:  # Process columns with missing values
-            # Extract observed data
-            observed = df[col].dropna()
-            X_observed = np.array(observed.index).reshape(-1, 1)  # Reshape index
-            y_observed = observed.values
+    with warnings.catch_warnings(action="ignore"):
 
-            # Extract missing data locations
-            X_missing = np.array(df[df[col].isna()].index).reshape(-1, 1)
+        for col in tqdm(df.columns):
+            if df[col].isna().sum() > 0:  # Process columns with missing values
+                # Extract observed data
+                observed = df[col].dropna()
+                X_observed = np.array(observed.index).reshape(-1, 1)  # Reshape index
+                y_observed = observed.values
 
-            # Define Gaussian Process
-            # kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
-            PARAM_RANGES = (1e-9, 1e5)
+                # Extract missing data locations
+                X_missing = np.array(df[df[col].isna()].index).reshape(-1, 1)
 
-            kernel = WhiteKernel(0.1, PARAM_RANGES)
-            kernel += ConstantKernel(1, PARAM_RANGES) * RBF(1, PARAM_RANGES)
-            kernel += ConstantKernel(1, PARAM_RANGES) * DotProduct(1, PARAM_RANGES)
-            gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=1e-2)
+                # Define Gaussian Process
+                # kernel = C(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2))
+                PARAM_RANGES = (1e-1, 1e1)
 
-            # Fit GP to observed data
-            gp.fit(X_observed, y_observed)
+                kernel = WhiteKernel(0.1, PARAM_RANGES)
+                kernel += ConstantKernel(1, PARAM_RANGES) * RBF(1, PARAM_RANGES)
+                kernel += ConstantKernel(1, PARAM_RANGES) * DotProduct(1, PARAM_RANGES)
+                gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10, alpha=1e-2)
 
-            # Predict missing values
-            y_missing_pred, sigma = gp.predict(X_missing, return_std=True)
+                # Fit GP to observed data
+                gp.fit(X_observed, y_observed)
 
-            # Fill missing values in the original dataframe
-            df.loc[df[col].isna(), col] = y_missing_pred
+                # Predict missing values
+                y_missing_pred, sigma = gp.predict(X_missing, return_std=True)
+
+                # Fill missing values in the original dataframe
+                df.loc[df[col].isna(), col] = y_missing_pred
     return df
 
 class ExternalAction:
@@ -61,15 +63,26 @@ class ExternalAction:
 
 class Forecaster:
     def __init__(self):
+        # kernel = WhiteKernel(0.1, (1e-2, 1e2))
+        # kernel += ConstantKernel(1, (1e-8, 1e3)) * RBF(1, (1e-3, 1e2))
+        # kernel += ConstantKernel(1, (1e-8, 1e3)) * ExpSineSquared(1, 1, (1e-2, 1e2), (1e-2, 1e2))
+        # kernel += ConstantKernel(1, (1e-8, 1e3)) * DotProduct(1, (1e-2, 1e2))
         # kernel = WhiteKernel(0.1, (1e-3, 1e3))
-        # kernel += ConstantKernel(1, (1e-4, 1e2)) * RBF(1, (1e-3, 1e2))
-        # kernel += ConstantKernel(1, (1e-4, 1e2)) * ExpSineSquared(1, 1, (1e-2, 1e2), (1e-2, 1e2))
-        # kernel += ConstantKernel(1, (1e-4, 1e2)) * DotProduct(1, (1e-2, 1e2))
+        # kernel += ConstantKernel(1, (1e-4, 1e4)) * RBF(1, (1e-3, 1e3))
+        # kernel += ConstantKernel(1, (1e-4, 1e4)) * ExpSineSquared(1, 1, (1e-2, 1e2), (1e-2, 1e2))
+        # kernel += ConstantKernel(1, (1e-4, 1e4)) * DotProduct(1, (1e-3, 1e3))
 
         PARAM_RANGES = (1e-9, 1e9)
         kernel = WhiteKernel(0.1, PARAM_RANGES)
         kernel += ConstantKernel(1, PARAM_RANGES) * RBF(1, PARAM_RANGES)
         kernel += ConstantKernel(1, PARAM_RANGES) * DotProduct(1, PARAM_RANGES)
+
+
+
+        # PARAM_RANGES = (1e-4, 1e4)
+        # kernel = WhiteKernel(0.1, PARAM_RANGES)
+        # kernel += ConstantKernel(1, PARAM_RANGES) * RBF(1, PARAM_RANGES)
+        # kernel += ConstantKernel(1, PARAM_RANGES) * DotProduct(1, PARAM_RANGES)
 
         self.gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=9, random_state=42)
         self.y_mean = None
@@ -83,6 +96,7 @@ class Forecaster:
         y = dff["ex_factory_volumes"]
 
         X = X.fillna(X.mean())
+        # X = fill_missing_values_with_gp(X)
 
         self.X_mean = X.mean()
         self.X_std = X.std()
