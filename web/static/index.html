@@ -232,7 +232,7 @@
 
       async function callBackend(actions) {
         // Fetch the JSON data
-        const response = await fetch("http://localhost:5000/forecast", {
+        const response = await fetch("http://127.0.0.1:8000/forecast/", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
