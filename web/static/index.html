@@ -126,6 +126,8 @@
 
     <div id="plot2" style="width: 80%; height: 500px; margin: auto"></div>
 
+    <div id="shap-plot" style="width: 80%; height: 500px; margin: auto"></div>
+
     <script>
       let actionCount = 0;
 
@@ -237,18 +239,12 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify( actions ),
+          body: JSON.stringify(actions),
         });
         var data = await response.json();
 
         // Add fake response wait time
         await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // data = {
-        //   x: [1, 2, 3, 4, 5],
-        //   y: [1, 4, 9, 5, 4],
-        //   std: [0.5, 0.3, 0.8, 0.2, 0.4],
-        // };
 
         document.getElementById("loading-overlay").style.display = "none";
 
@@ -268,9 +264,16 @@
         const upperBound = y.map((value, index) => value + std[index]);
         const lowerBound = y.map((value, index) => value - std[index]);
 
+        const startDate = new Date(2024, 10); // November 2024
+        const dates = x.map((monthOffset) => {
+          const date = new Date(startDate);
+          date.setMonth(startDate.getMonth() + monthOffset);
+          return date.toISOString().split("T")[0]; // Format as YYYY-MM-DD
+        });
+
         // Create traces for the plot
         const traceMain = {
-          x: x,
+          x: dates,
           y: y,
           mode: "lines+markers",
           name: "Main Line",
@@ -278,7 +281,7 @@
         };
 
         const traceUpper = {
-          x: x,
+          x: dates,
           y: upperBound,
           mode: "lines",
           line: { color: "lightblue", dash: "dot" },
@@ -286,7 +289,7 @@
         };
 
         const traceLower = {
-          x: x,
+          x: dates,
           y: lowerBound,
           mode: "lines",
           line: { color: "lightblue", dash: "dot" },
@@ -295,7 +298,7 @@
 
         // Confidence interval fill
         const traceFill = {
-          x: [...x, ...x.slice().reverse()],
+          x: [...dates, ...dates.slice().reverse()],
           y: [...upperBound, ...lowerBound.slice().reverse()],
           fill: "toself",
           fillcolor: "rgba(173,216,230,0.3)",
@@ -309,8 +312,8 @@
         // Layout for the plot
         const layout = {
           title: "Plot with Confidence Intervals",
-          xaxis: { title: "X-axis" },
-          yaxis: { title: "Y-axis" },
+          xaxis: { title: "Date" },
+          yaxis: { title: "Ex-factory Volumes" },
           showlegend: true,
         };
 
@@ -323,13 +326,56 @@
 
       async function fetchDataAndPlot(url) {
         // Fetch the JSON data
-        const response = await fetch(url);
+        document.getElementById("loading-overlay").style.display = "flex";
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify([]),
+        });
         var data = await response.json();
+        console.log("AAAAAAAAAAAA", data);
+        document.getElementById("loading-overlay").style.display = "none";
 
-        createPlot(data.record, "plot1"); // For demonstration, show a plot
+        createPlot(data, "plot1"); // For demonstration, show a plot
       }
 
-      fetchDataAndPlot("https://api.jsonbin.io/v3/qs/674c0e34ad19ca34f8d37b0e");
+      fetchDataAndPlot("http://127.0.0.1:8000/forecast/");
+
+      async function fetchShapDataAndPlot(url) {
+        // Fetch the JSON data
+        document.getElementById("loading-overlay").style.display = "flex";
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify([]),
+        });
+        var data = await response.json();
+        console.log("BBBBBBBBB", data);
+        document.getElementById("loading-overlay").style.display = "none";
+
+        // createPlot(data, "shap-plot"); // For demonstration, show a plot
+        // Create a bar plot for SHAP values
+        const trace = {
+          x: data.x,
+          y: data.y,
+          type: "bar",
+          orientation: "h",
+        };
+
+        const layout = {
+          title: "SHAP Values",
+          xaxis: { title: "SHAP Value" },
+          yaxis: { title: "Feature" },
+        };
+
+        Plotly.newPlot("shap-plot", [trace], layout);
+      }
+
+      fetchShapDataAndPlot("http://127.0.0.1:8000/shap/");
     </script>
   </body>
 </html>
