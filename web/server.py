@@ -12,6 +12,9 @@ import datetime
 from copy import deepcopy
 from dateutil.relativedelta import relativedelta
 
+from scenariogpt import getEventValuesJson
+import json
+
 df = load_innovix_floresland("../src/data")
 first_date = datetime.datetime(2018, 1, 1)
 forecaster_orig = Forecaster()
@@ -54,6 +57,41 @@ async def create_item(requests: list[Request]):
         verbose = False,
     )
 
+    return { 
+        "x": [*range(0, len(preds))], 
+        "y": preds.tolist(), 
+        "std": (stds*1.96).tolist(), 
+        "first_date": first_date + relativedelta(months=df.iloc[-1]["Date"]+1)
+    }
+
+class Prompt(BaseModel):
+    prompt: str
+    time : int
+
+@app.post("/autoscenario")
+async def create_item(request: Prompt):
+    foreacter = deepcopy(forecaster_orig)
+
+    #call the new json values
+    jsonvars = getEventValuesJson(request.prompt, request.time)
+
+    jsonvars = json.loads(jsonvars)
+    
+    
+    preds, stds = forecaster.forecast(
+        10,
+        external_actions = [
+            ExternalAction(
+                key, 
+                value.amount, 
+                iso_to_timestep(value.time, first_date), 
+                value.duration, 
+                value.actionType
+            ) for key, value in jsonvars.items()
+        ],
+        maxlags = 15,
+        verbose = False,
+    )
     return { 
         "x": [*range(0, len(preds))], 
         "y": preds.tolist(), 

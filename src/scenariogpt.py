@@ -15,7 +15,7 @@ def getEventValuesJson(event, time)
     
     
     timeOfEvent = time
-    actionType = "Set"
+    actionType = "Update"
     
     
     vars = (open("vars/input.json").read()) #can be changed to be a function
@@ -47,6 +47,7 @@ def getEventValuesJson(event, time)
     jsondata = json.loads(jsondata)
     for key in jsondata:
         jsondata[key]["time"] = timeOfEvent
+        jsondata[key]["actionType"] = actionType
     
     print(jsondata)
     
