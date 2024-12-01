@@ -170,7 +170,7 @@ def load_innovix_floresland(data_root="./data"):
     df_new_patient_share = fix_date_missing_period(df_new_patient_share)
     df_indication_split = pd.read_excel(os.path.join(data_root, "INNOVIX_Floresland.xlsx"), sheet_name="Indication split")
 
-    num_indications = set(
+    indications = set(
         [int(x.split(" ")[1]) for x in df_activity["Indication"].unique()] +
         [int(x.split(" ")[1]) for x in df_share_of_voice["Indication"].unique()] +
         [int(x.split(" ")[1]) for x in df_new_patient_share["Indication"].unique()] +
@@ -189,10 +189,10 @@ def load_innovix_floresland(data_root="./data"):
     df = merge_dfs([
         clean_innovix_ex_factory_vol(df_ex_factory_vol),
         clean_innovix_demand_volumes(df_demand_volumes, products),
-        clean_innovix_activity(df_activity, num_indications, products),
-        clean_innovix_share_of_voice(df_share_of_voice, num_indications, products),
-        clean_innovix_new_patient_share(df_new_patient_share, num_indications, products),
-        clean_innovix_indication_split(df_indication_split, num_indications, products)
+        clean_innovix_activity(df_activity, indications, products),
+        clean_innovix_share_of_voice(df_share_of_voice, indications, products),
+        clean_innovix_new_patient_share(df_new_patient_share, indications, products),
+        clean_innovix_indication_split(df_indication_split, indications, products)
     ])
 
     df.drop(columns=["Country", "Product"], inplace=True)
@@ -212,7 +212,7 @@ def load_innovix_elbonie(data_root="./data"):
     df_indication_split = fix_date_missing_period(df_indication_split)
 
 
-    num_indications = set(
+    indications = set(
         [int(x.split(" ")[1]) for x in df_activity["Indication"].unique()] +
         [int(x.split(" ")[1]) for x in df_indication_split["Indication"].unique()]
     )
@@ -226,8 +226,8 @@ def load_innovix_elbonie(data_root="./data"):
     df = merge_dfs([
         clean_innovix_ex_factory_vol(df_ex_factory_vol),
         clean_innovix_demand_volumes(df_demand_volumes, products, measure_type="Milligrams"),
-        clean_innovix_activity(df_activity, num_indications, products),
-        clean_innovix_indication_split(df_indication_split, num_indications, products)
+        clean_innovix_activity(df_activity, indications, products),
+        clean_innovix_indication_split(df_indication_split, indications, products)
     ])
 
     df.drop(columns=["Country", "Product"], inplace=True)
@@ -250,7 +250,7 @@ def load_bristor_zegoland(data_root="./data"):
     df_patient_share = pd.read_excel(os.path.join(data_root, "BRISTOR_Zegoland.xlsx"), sheet_name="Patient numbers and share")
     df_patient_share = fix_date_missing_period(df_patient_share)
 
-    num_indications = set(
+    indications = set(
         [x.split(" ")[1] for x in df_share_of_voice["Indication"].unique()] +
         [x.split(" ")[1] for x in df_patient_share["Indication"].unique()]
     )
@@ -267,7 +267,8 @@ def load_bristor_zegoland(data_root="./data"):
         clean_innovix_ex_factory_vol(df_ex_factory_vol,),
         clean_innovix_demand_volumes(df_demand_volumes, products, measure_name="Measure", measure_type="Days of Treatment"),
         clean_innovix_activity(df_activity, None, products),
-        clean_innovix_share_of_voice(df_share_of_voice, num_indications, products),
+        clean_innovix_share_of_voice(df_share_of_voice, indications, products),
+        clean_patient_share(df_patient_share, indications, products)
     ])
 
     df.drop(columns=["Country", "Product"], inplace=True)
